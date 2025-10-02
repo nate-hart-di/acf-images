@@ -25,9 +25,9 @@ processed/
 *.tmp
 *.log
 
-# Cookie files (contain sensitive authentication data)
-.cookies.txt
-*cookies*.txt
+# Cookie files (optional, user-provided for authentication)
+cookies.txt
+*.cookies
 
 # Optional: Keep example HTML for testing
 !example.html
