@@ -56,7 +56,7 @@ print_status "Making sure Homebrew formulas are up to date..."
 brew update
 
 # Required packages for the downloader
-REQUIRED_TOOLS=(wget imagemagick ffmpeg jq rg)
+REQUIRED_TOOLS=(wget imagemagick ffmpeg jq rg imageoptim-cli)
 for tool in "${REQUIRED_TOOLS[@]}"; do
   if brew list "$tool" >/dev/null 2>&1; then
     print_success "$tool already installed."

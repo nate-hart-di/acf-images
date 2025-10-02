@@ -45,7 +45,16 @@ getimage           # processes the most recent HTML export in ~/Downloads/acf-im
 ## Notes on Image Naming
 
 - Filenames follow the pattern `<order>-<section>-<alt-or-derived>.extension`, preserving appearance order while staying descriptive.
-- WordPress-generated downsized suffixes (e.g., `-150x150`, `-scaled`) are stripped so the downloader requests the original asset. Custom dimensions such as `-250x188` are left intact.
+- WordPress-generated downsized suffixes are intelligently detected and stripped using a whitelist approach:
+  - **Removed**: WordPress default sizes (`-150x150`, `-300x300`, `-768xNNN`, `-1024xNNN`, `-1536x1536`, `-2048x2048`, `-scaled`, `-thumbnail`, `-medium`, `-large`)
+  - **Preserved**: Custom dimensions (e.g., `-250x188`, `-500x375`) that don't match WordPress defaults
+  - When a WordPress suffix is detected, the script attempts to download the full-resolution original, with automatic fallback to the sized version if unavailable.
+
+## Automatic Image Optimization
+
+- Images are automatically optimized using ImageOptim CLI after download (if installed).
+- This eliminates the need to manually drag folders to ImageOptim.
+- The setup script installs `imageoptim-cli` via Homebrew automatically.
 
 ## Troubleshooting
 

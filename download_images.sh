@@ -102,16 +102,47 @@ get_original_filename() {
   local clean_basename="$basename"
   local wp_modified=0
 
-  # Strip trailing WordPress-generated dimension suffixes (preserve duplicate indices)
-  while echo "$clean_basename" | grep -qE '\-[0-9]+x[0-9]+(-[0-9]+)?$'; do
-    if echo "$clean_basename" | grep -qE '\-[0-9]+x[0-9]+-[0-9]+$'; then
-      local dup_suffix=$(echo "$clean_basename" | sed -E 's/^.*-([0-9]+x[0-9]+)-([0-9]+)$/\2/')
-      clean_basename=$(echo "$clean_basename" | sed -E 's/-[0-9]+x[0-9]+-[0-9]+$/-'"$dup_suffix"'/')
+  # WordPress default image sizes (whitelist approach)
+  # Reference: https://developer.wordpress.org/advanced-administration/wordpress/media/
+  local wp_sizes=(
+    "150x150"    # thumbnail (default)
+    "300x225"    # medium (default 4:3 ratio example)
+    "300x300"    # medium (square)
+    "768x"       # medium_large (width only, height varies)
+    "1024x"      # large (width only, height varies)
+    "1536x1536"  # WordPress 4.4+ - 2x large
+    "2048x2048"  # WordPress 4.4+ - 2x extra large
+  )
+
+  # Strip trailing WordPress-generated dimension suffixes ONLY if they match whitelist
+  if echo "$clean_basename" | grep -qE '\-[0-9]+x[0-9]*(-[0-9]+)?$'; then
+    # Extract the dimension suffix
+    local dim_suffix=$(echo "$clean_basename" | sed -E 's/^.*-([0-9]+x[0-9]*)(-[0-9]+)?$/\1/')
+
+    # Check if this dimension matches WordPress defaults
+    local is_wp_size=0
+    for wp_size in "${wp_sizes[@]}"; do
+      if [[ "$dim_suffix" == "$wp_size" ]] || [[ "$dim_suffix" =~ ^${wp_size}[0-9]*$ ]]; then
+        is_wp_size=1
+        break
+      fi
+    done
+
+    # Only remove if it's a WordPress default size
+    if [ "$is_wp_size" -eq 1 ]; then
+      # Check for duplicate index (e.g., -150x150-2)
+      if echo "$clean_basename" | grep -qE '\-[0-9]+x[0-9]*-[0-9]+$'; then
+        local dup_suffix=$(echo "$clean_basename" | sed -E 's/^.*-[0-9]+x[0-9]*-([0-9]+)$/\1/')
+        clean_basename=$(echo "$clean_basename" | sed -E 's/-[0-9]+x[0-9]*-[0-9]+$/-'"$dup_suffix"'/')
+      else
+        clean_basename=$(echo "$clean_basename" | sed -E 's/-[0-9]+x[0-9]*$//')
+      fi
+      wp_modified=1
+      debug "Removed WordPress size suffix: $dim_suffix"
     else
-      clean_basename=$(echo "$clean_basename" | sed -E 's/-[0-9]+x[0-9]+$//')
+      debug "Preserved custom dimension: $dim_suffix (not a WordPress default)"
     fi
-    wp_modified=1
-  done
+  fi
 
   # Remove trailing WordPress size keywords (thumbnail, medium, scaled, etc.)
   if echo "$clean_basename" | grep -qE '\-(thumbnail|medium(_large)?|large|full|scaled|rotated)$'; then
@@ -414,6 +445,20 @@ if [ -n "$AVIF_FILES" ]; then
   find "$BASE_DIR" -name "*.avif" | while read -r avif_file; do
     convert_avif_if_needed "$avif_file"
   done
+fi
+
+# Optimize images with ImageOptim CLI if available
+if command -v imageoptim > /dev/null 2>&1; then
+  print ""
+  print "Optimizing images with ImageOptim..."
+  imageoptim --directory "$BASE_DIR" 2>/dev/null
+  if [ $? -eq 0 ]; then
+    print "  ✓ Image optimization complete"
+  else
+    print "  ⚠ ImageOptim encountered issues (images still downloaded successfully)"
+  fi
+else
+  debug "ImageOptim CLI not installed. Install with: brew install imageoptim-cli"
 fi
 
 # Open the output directory if on macOS
