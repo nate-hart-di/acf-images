@@ -81,22 +81,34 @@ cp "$SCRIPT_DIR/download_images.sh" "$DOWNLOAD_SCRIPT"
 chmod +x "$DOWNLOAD_SCRIPT"
 print_success "Installed to $DOWNLOAD_SCRIPT"
 
-# Update or add the getimage alias (now supports arguments for URL input)
-NEW_ALIAS='alias getimage="[[ -f $HOME/Downloads/acf-images/download_images.sh ]] && $HOME/Downloads/acf-images/download_images.sh \"\$@\" || echo '\''getimage script not found'\''"'
+# Update or add the getimage function (changed from alias to support URL arguments)
+print_status "Adding/updating getimage function in ~/.zshrc..."
 
+# Remove old alias if it exists
 if grep -q '^alias getimage=' "$HOME/.zshrc" 2>/dev/null; then
-  print_status "Updating existing getimage alias in ~/.zshrc..."
-  # macOS sed requires an empty string after -i
-  sed -i '' "s|^alias getimage=.*|$NEW_ALIAS|" "$HOME/.zshrc"
-else
-  print_status "Adding getimage alias to ~/.zshrc..."
-  {
-    echo ""
-    echo "# ACF image downloader"
-    echo "$NEW_ALIAS"
-  } >> "$HOME/.zshrc"
+  sed -i '' '/^alias getimage=/d' "$HOME/.zshrc"
 fi
-print_success "Alias ready. Run 'source ~/.zshrc' or restart your terminal to load it."
+
+# Remove old function if it exists
+if grep -q '^getimage()' "$HOME/.zshrc" 2>/dev/null; then
+  sed -i '' '/^getimage()/,/^}/d' "$HOME/.zshrc"
+  sed -i '' '/^# ACF image downloader$/d' "$HOME/.zshrc"
+fi
+
+# Add new function
+{
+  echo ""
+  echo "# ACF image downloader"
+  echo 'getimage() {'
+  echo '  if [[ -f $HOME/Downloads/acf-images/download_images.sh ]]; then'
+  echo '    $HOME/Downloads/acf-images/download_images.sh "$@"'
+  echo '  else'
+  echo '    echo "getimage script not found"'
+  echo '  fi'
+  echo '}'
+} >> "$HOME/.zshrc"
+
+print_success "Function ready. Run 'source ~/.zshrc' or restart your terminal to load it."
 
 print_status "Setup finished. Next steps:"
 echo "  1. Place ACF HTML export files in $TARGET_DIR"
