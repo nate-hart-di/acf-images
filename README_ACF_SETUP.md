@@ -38,28 +38,47 @@ getimage https://example.dealerinspire.com/inventory/new-vehicles
    - The log file for that run.
 4. When prompted, decide whether to keep or delete the original HTML file. Regardless of your answer, a copy is stored (and overwritten on subsequent runs) inside `~/Downloads/acf-images/processed/`.
 
-### Option 2: URL Input (Direct Fetch)
+### Option 2: URL Input (Direct Fetch) - WITH AUTOMATIC AUTHENTICATION
 
-1. Copy a URL from your browser (any Dealer Inspire or WordPress site).
-2. Run `getimage https://example.com/page-with-images`.
-3. The script will:
-   - Fetch the HTML from the URL
+1. **Login to the site in Chrome** (if authentication required)
+2. Copy the URL from your browser
+3. Run `getimage https://example.com/page-with-images`
+4. The script will **automatically**:
+   - **Extract your Chrome cookies for the domain** (SSO, OAuth, session cookies - everything!)
+   - Fetch the HTML using your authenticated session
+   - Download all images using the same authentication
    - Save it with a timestamped filename
    - Process all images as usual
    - Archive the fetched HTML in `processed/`
-4. All images are downloaded and optimized automatically.
+5. All images are downloaded and optimized automatically.
+
+**🔒 Authentication Support:**
+- **Automatic Chrome Cookie Extraction** - No manual cookie export needed!
+- **Works with SSO/OAuth** - Login once in Chrome, script uses your session
+- **Dev Site Access** - Download from password-protected staging/dev sites
+- **Session Persistence** - Images download with same auth as HTML
+- **Secure** - Cookies are temporary and never committed to git
 
 **Examples:**
 ```bash
-# Fetch from live site
+# Fetch from public site (no auth needed)
 getimage https://example.dealerinspire.com/inventory/new-vehicles
 
-# Fetch specific vehicle page
-getimage https://example.dealerinspire.com/new/Honda/2024-Accord
+# Fetch from SSO-protected dev site (uses your Chrome login automatically)
+getimage https://dev-site.dealerinspire.com/media-gallery
 
-# Fetch any page with images
-getimage https://yoursite.com/gallery
+# Fetch specific vehicle page (authenticated if needed)
+getimage https://staging.dealerinspire.com/new/Honda/2024-Accord
+
+# Fetch from any password-protected site (just login in Chrome first)
+getimage https://yoursite.com/admin/gallery
 ```
+
+**How It Works:**
+1. You login to the site in Chrome (SSO, OAuth, whatever)
+2. Script automatically extracts session cookies from Chrome's database
+3. Cookies are used for both HTML and image downloads
+4. Works seamlessly for both public and protected content
 
 ## Logging & History
 
