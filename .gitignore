@@ -1,0 +1,29 @@
+# ACF Images - Git Ignore
+
+# BMAD Framework (local only)
+.bmad-core/
+.bmad-*/
+.claude/
+AGENTS.md
+web-bundles/
+
+# macOS System Files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Runtime Directories (generated content)
+output/
+logs/
+processed/
+
+# Input HTML Files (temporary, archived after processing)
+*.html
+
+# Temporary Files
+*.tmp
+*.log
+
+# Optional: Keep example HTML for testing
+!example.html
