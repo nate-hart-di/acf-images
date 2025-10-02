@@ -1,6 +1,6 @@
 # ACF Image Downloader
 
-Automates downloading high-resolution images from WordPress ACF HTML exports. The tooling now keeps meaningful file names, records logs per run, and archives every processed HTML input.
+Automates downloading high-resolution images from WordPress ACF HTML exports or live URLs. The tooling keeps meaningful file names, records logs per run, and archives every processed HTML input.
 
 ## Quick Start
 
@@ -8,7 +8,12 @@ Automates downloading high-resolution images from WordPress ACF HTML exports. Th
 # From the repository root
 ./setup_acf_downloader.sh
 source ~/.zshrc   # or open a new terminal session
-getimage           # processes the most recent HTML export in ~/Downloads/acf-images/
+
+# Option 1: Process HTML file in directory
+getimage
+
+# Option 2: Fetch and process from URL
+getimage https://example.dealerinspire.com/inventory/new-vehicles
 ```
 
 ## What the Setup Script Does
@@ -23,6 +28,8 @@ getimage           # processes the most recent HTML export in ~/Downloads/acf-im
 
 ## Daily Workflow
 
+### Option 1: HTML File Input (Traditional)
+
 1. Drop a WordPress ACF HTML export into `~/Downloads/acf-images/`.
 2. Run `getimage`.
 3. Review the output shown in the terminal:
@@ -30,6 +37,29 @@ getimage           # processes the most recent HTML export in ~/Downloads/acf-im
    - The output directory path.
    - The log file for that run.
 4. When prompted, decide whether to keep or delete the original HTML file. Regardless of your answer, a copy is stored (and overwritten on subsequent runs) inside `~/Downloads/acf-images/processed/`.
+
+### Option 2: URL Input (Direct Fetch)
+
+1. Copy a URL from your browser (any Dealer Inspire or WordPress site).
+2. Run `getimage https://example.com/page-with-images`.
+3. The script will:
+   - Fetch the HTML from the URL
+   - Save it with a timestamped filename
+   - Process all images as usual
+   - Archive the fetched HTML in `processed/`
+4. All images are downloaded and optimized automatically.
+
+**Examples:**
+```bash
+# Fetch from live site
+getimage https://example.dealerinspire.com/inventory/new-vehicles
+
+# Fetch specific vehicle page
+getimage https://example.dealerinspire.com/new/Honda/2024-Accord
+
+# Fetch any page with images
+getimage https://yoursite.com/gallery
+```
 
 ## Logging & History
 

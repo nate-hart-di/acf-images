@@ -81,8 +81,8 @@ cp "$SCRIPT_DIR/download_images.sh" "$DOWNLOAD_SCRIPT"
 chmod +x "$DOWNLOAD_SCRIPT"
 print_success "Installed to $DOWNLOAD_SCRIPT"
 
-# Update or add the getimage alias
-NEW_ALIAS='alias getimage="[[ -f $HOME/Downloads/acf-images/download_images.sh ]] && $HOME/Downloads/acf-images/download_images.sh || echo '\''getimage script not found'\''"'
+# Update or add the getimage alias (now supports arguments for URL input)
+NEW_ALIAS='alias getimage="[[ -f $HOME/Downloads/acf-images/download_images.sh ]] && $HOME/Downloads/acf-images/download_images.sh \"\$@\" || echo '\''getimage script not found'\''"'
 
 if grep -q '^alias getimage=' "$HOME/.zshrc" 2>/dev/null; then
   print_status "Updating existing getimage alias in ~/.zshrc..."

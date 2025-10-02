@@ -1,18 +1,21 @@
 #!/bin/bash
 #
 # ACF Image Downloader - Improved Version
-# 
+#
 # Key features:
+# - URL or HTML file input support
 # - Intelligent WordPress size suffix removal (-150x150, -scaled, etc.)
 # - Chronological per-run logs stored in ~/Downloads/acf-images/logs
 # - Smart filename generation preserving meaningful content and order
 # - Optional AVIF conversion via ffmpeg or ImageMagick
+# - Automatic ImageOptim CLI integration
 # - Summary counts with success/failure indicators
 # - Automatic archival of processed HTML inputs
 #
 # Usage:
-#   ./download_images.sh           # Normal operation
-#   DEBUG=1 ./download_images.sh   # Debug mode with verbose output
+#   ./download_images.sh                              # Process HTML file in directory
+#   ./download_images.sh https://example.com/page     # Fetch and process URL
+#   DEBUG=1 ./download_images.sh                      # Debug mode with verbose output
 
 # Define directories
 INPUT_DIR="$HOME/Downloads/acf-images"
@@ -63,18 +66,65 @@ if [ ! -d "$INPUT_DIR" ]; then
   exit 1
 fi
 
-# Find HTML files
-HTML_FILES=("$INPUT_DIR"/*.html)
-if [ ${#HTML_FILES[@]} -eq 0 ] || [ ! -f "${HTML_FILES[0]}" ]; then
-  print "Error: No HTML files found in $INPUT_DIR."
-  exit 1
+# Function to generate slug from URL
+url_to_slug() {
+  local url="$1"
+  # Remove protocol (http://, https://)
+  local slug=$(echo "$url" | sed -E 's|^https?://||')
+  # Remove trailing slash
+  slug=$(echo "$slug" | sed 's|/$||')
+  # Replace slashes and special chars with hyphens
+  slug=$(echo "$slug" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
+  echo "$slug"
+}
+
+# Determine input source: URL argument or HTML file
+HTML_FILE=""
+SLUG=""
+FETCHED_FROM_URL=false
+
+if [ $# -ge 1 ] && [[ "$1" =~ ^https?:// ]]; then
+  # URL provided as argument
+  INPUT_URL="$1"
+  print "Fetching URL: $INPUT_URL"
+
+  SLUG=$(url_to_slug "$INPUT_URL")
+  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+  HTML_FILE="$INPUT_DIR/fetched-${TIMESTAMP}-${SLUG}.html"
+
+  debug "Downloading HTML from URL..."
+  if ! wget --timeout=30 --tries=3 -q -O "$HTML_FILE" --user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" "$INPUT_URL" 2>/dev/null; then
+    print "Error: Failed to fetch URL: $INPUT_URL"
+    rm -f "$HTML_FILE"
+    exit 1
+  fi
+
+  if [ ! -s "$HTML_FILE" ]; then
+    print "Error: Fetched HTML file is empty."
+    rm -f "$HTML_FILE"
+    exit 1
+  fi
+
+  print "  ✓ HTML fetched successfully"
+  FETCHED_FROM_URL=true
+else
+  # Look for HTML file in directory
+  HTML_FILES=("$INPUT_DIR"/*.html)
+  if [ ${#HTML_FILES[@]} -eq 0 ] || [ ! -f "${HTML_FILES[0]}" ]; then
+    print "Error: No HTML files found in $INPUT_DIR."
+    print ""
+    print "Usage:"
+    print "  1. Place an HTML file in $INPUT_DIR, or"
+    print "  2. Provide a URL as argument: getimage https://example.com/page"
+    exit 1
+  fi
+
+  HTML_FILE="${HTML_FILES[0]}"
+  SLUG=$(basename "$HTML_FILE" .html | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
 fi
 
-# Derive slug from the first HTML file's name
-HTML_FILE="${HTML_FILES[0]}"
-SLUG=$(basename "$HTML_FILE" .html | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
 if [ -z "$SLUG" ]; then
-  print "Error: Could not derive slug from $HTML_FILE."
+  print "Error: Could not derive slug from input."
   exit 1
 fi
 
