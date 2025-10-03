@@ -82,14 +82,40 @@ url_to_slug() {
   echo "$slug"
 }
 
+# Function to resolve relative URLs to absolute URLs
+resolve_url() {
+  local url="$1"
+  local base_url="$2"
+
+  # Already absolute URL
+  if [[ "$url" =~ ^https?:// ]]; then
+    echo "$url"
+    return
+  fi
+
+  # Relative URL starting with /
+  if [[ "$url" =~ ^/ ]]; then
+    echo "${base_url}${url}"
+    return
+  fi
+
+  # Relative URL without leading / (treat as path relative)
+  echo "${base_url}/${url}"
+}
+
 # Determine input source: URL argument or HTML file
 HTML_FILE=""
 SLUG=""
 FETCHED_FROM_URL=false
+BASE_URL=""
 
 if [ $# -ge 1 ] && [[ "$1" =~ ^https?:// ]]; then
   # URL provided as argument
   INPUT_URL="$1"
+
+  # Extract base URL (protocol + domain) for relative path resolution
+  BASE_URL=$(echo "$INPUT_URL" | sed -E 's|(https?://[^/]+).*|\1|')
+
   print "Fetching URL: $INPUT_URL"
 
   # Check if user provided a cookie file
@@ -470,7 +496,13 @@ while IFS= read -r line; do
         debug "Warning: Empty image URL at line $LINE_NUM, skipping."
         continue
       fi
-      
+
+      # Resolve relative URLs to absolute URLs when fetched from web
+      if [ "$FETCHED_FROM_URL" = true ] && [ -n "$BASE_URL" ]; then
+        IMAGE_URL=$(resolve_url "$IMAGE_URL" "$BASE_URL")
+        debug "Resolved URL: $IMAGE_URL"
+      fi
+
       ALT_TEXT=$(echo "$CONTENT" | sed -n 's/.*alt="\([^"]*\)".*/\1/p')
       if [ -z "$ALT_TEXT" ]; then
         for offset in 1 2 3; do
