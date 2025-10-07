@@ -252,13 +252,12 @@ generate_filename() {
     section_slug=$(echo "$section_slug" | sed 's/-image$//')
   fi
 
-  local label_slug=""
-  if [ -n "$label" ]; then
-    label_slug=$(slugify "$label")
-  fi
+  # Prioritize original filename over alt text for better ordering
+  local label_slug=$(slugify "$base_name")
 
-  if [ -z "$label_slug" ]; then
-    label_slug=$(slugify "$base_name")
+  # Only use alt text if base_name doesn't provide meaningful content
+  if [ -z "$label_slug" ] && [ -n "$label" ]; then
+    label_slug=$(slugify "$label")
   fi
 
   local filename="$index"
