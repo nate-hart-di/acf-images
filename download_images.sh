@@ -22,13 +22,14 @@ INPUT_DIR="$HOME/Downloads/acf-images"
 OUTPUT_BASE="$HOME/Downloads/acf-images/output"
 LOG_DIR="$HOME/Downloads/acf-images/logs"
 PROCESSED_DIR="$HOME/Downloads/acf-images/processed"
+FETCHED_HTML_DIR="$LOG_DIR/fetched-html"
 
 # Cookie file support (optional, user-provided)
 # User can manually export cookies from browser extension and place here
 COOKIE_FILE="${ACF_COOKIE_FILE:-$INPUT_DIR/cookies.txt}"
 
 # Create required directories
-mkdir -p "$OUTPUT_BASE" "$LOG_DIR" "$PROCESSED_DIR"
+mkdir -p "$OUTPUT_BASE" "$LOG_DIR" "$PROCESSED_DIR" "$FETCHED_HTML_DIR"
 
 # Helper to append to the current log file when available
 log_line() {
@@ -130,7 +131,7 @@ if [ $# -ge 1 ] && [[ "$1" =~ ^https?:// ]]; then
 
   SLUG=$(url_to_slug "$INPUT_URL")
   TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-  HTML_FILE="$INPUT_DIR/fetched-${TIMESTAMP}-${SLUG}.html"
+  HTML_FILE="$FETCHED_HTML_DIR/fetched-${TIMESTAMP}-${SLUG}.html"
 
   debug "Downloading HTML from URL..."
   if ! wget --timeout=30 --tries=3 -q -O "$HTML_FILE" $WGET_COOKIES --user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" "$INPUT_URL" 2>/dev/null; then
@@ -192,45 +193,24 @@ get_original_filename() {
   local clean_basename="$basename"
   local wp_modified=0
 
-  # WordPress default image sizes (whitelist approach)
-  # Reference: https://developer.wordpress.org/advanced-administration/wordpress/media/
-  local wp_sizes=(
-    "150x150"    # thumbnail (default)
-    "300x225"    # medium (default 4:3 ratio example)
-    "300x300"    # medium (square)
-    "768x"       # medium_large (width only, height varies)
-    "1024x"      # large (width only, height varies)
-    "1536x1536"  # WordPress 4.4+ - 2x large
-    "2048x2048"  # WordPress 4.4+ - 2x extra large
-  )
+  # Remove WordPress dimension suffixes (e.g., -150x150, -300x200, -1024x768, -2048x1536)
+  # This handles dimensions at the end, optionally followed by a duplicate number (e.g., -150x150-2)
+  if echo "$clean_basename" | grep -qE '\-[0-9]+x[0-9]+(-[0-9]+)?$'; then
+    local original_basename="$clean_basename"
 
-  # Strip trailing WordPress-generated dimension suffixes ONLY if they match whitelist
-  if echo "$clean_basename" | grep -qE '\-[0-9]+x[0-9]*(-[0-9]+)?$'; then
-    # Extract the dimension suffix
-    local dim_suffix=$(echo "$clean_basename" | sed -E 's/^.*-([0-9]+x[0-9]*)(-[0-9]+)?$/\1/')
-
-    # Check if this dimension matches WordPress defaults
-    local is_wp_size=0
-    for wp_size in "${wp_sizes[@]}"; do
-      if [[ "$dim_suffix" == "$wp_size" ]] || [[ "$dim_suffix" =~ ^${wp_size}[0-9]*$ ]]; then
-        is_wp_size=1
-        break
-      fi
-    done
-
-    # Only remove if it's a WordPress default size
-    if [ "$is_wp_size" -eq 1 ]; then
-      # Check for duplicate index (e.g., -150x150-2)
-      if echo "$clean_basename" | grep -qE '\-[0-9]+x[0-9]*-[0-9]+$'; then
-        local dup_suffix=$(echo "$clean_basename" | sed -E 's/^.*-[0-9]+x[0-9]*-([0-9]+)$/\1/')
-        clean_basename=$(echo "$clean_basename" | sed -E 's/-[0-9]+x[0-9]*-[0-9]+$/-'"$dup_suffix"'/')
-      else
-        clean_basename=$(echo "$clean_basename" | sed -E 's/-[0-9]+x[0-9]*$//')
-      fi
-      wp_modified=1
-      debug "Removed WordPress size suffix: $dim_suffix"
+    # Check for duplicate index (e.g., -150x150-2) - preserve the duplicate number
+    if echo "$clean_basename" | grep -qE '\-[0-9]+x[0-9]+-[0-9]+$'; then
+      local dup_suffix=$(echo "$clean_basename" | sed -E 's/^.*-[0-9]+x[0-9]+-([0-9]+)$/\1/')
+      clean_basename=$(echo "$clean_basename" | sed -E 's/-[0-9]+x[0-9]+-[0-9]+$/-'"$dup_suffix"'/')
     else
-      debug "Preserved custom dimension: $dim_suffix (not a WordPress default)"
+      # Just remove the dimension suffix
+      clean_basename=$(echo "$clean_basename" | sed -E 's/-[0-9]+x[0-9]+$//')
+    fi
+
+    if [ "$clean_basename" != "$original_basename" ]; then
+      wp_modified=1
+      local removed_suffix=$(echo "$original_basename" | sed -E 's/^.*(-[0-9]+x[0-9]+(-[0-9]+)?)$/\1/')
+      debug "Removed WordPress dimension suffix: $removed_suffix"
     fi
   fi
 
@@ -238,6 +218,7 @@ get_original_filename() {
   if echo "$clean_basename" | grep -qE '\-(thumbnail|medium(_large)?|large|full|scaled|rotated)$'; then
     clean_basename=$(echo "$clean_basename" | sed -E 's/-(thumbnail|medium(_large)?|large|full|scaled|rotated)$//')
     wp_modified=1
+    debug "Removed WordPress size keyword"
   fi
 
   echo "${clean_basename}.${extension}"
