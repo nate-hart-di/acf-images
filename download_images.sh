@@ -74,13 +74,17 @@ fi
 # Function to generate slug from URL
 url_to_slug() {
   local url="$1"
+
   # Remove protocol (http://, https://)
-  local slug=$(echo "$url" | sed -E 's|^https?://||')
+  url=$(echo "$url" | sed -E 's|^https?://||')
+
+  # Strip query parameters and fragments
+  url=$(echo "$url" | sed 's/[?#].*$//')
+
   # Remove trailing slash
-  slug=$(echo "$slug" | sed 's|/$||')
-  # Replace slashes and special chars with hyphens
-  slug=$(echo "$slug" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
-  echo "$slug"
+  url=$(echo "$url" | sed 's|/$||')
+
+  echo "$url"
 }
 
 # Function to resolve relative URLs to absolute URLs
@@ -171,6 +175,7 @@ fi
 
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 LOG_FILE="$LOG_DIR/${TIMESTAMP}_${SLUG}.log"
+mkdir -p "$(dirname "$LOG_FILE")"
 touch "$LOG_FILE"
 
 print "Processing $HTML_FILE..."
