@@ -32,6 +32,14 @@ if [[ "$OSTYPE" != "darwin"* ]]; then
   exit 1
 fi
 
+# Ensure Homebrew paths are available when launched via Finder
+if [ -d "/opt/homebrew/bin" ] && [[ ":$PATH:" != *":/opt/homebrew/bin:"* ]]; then
+  export PATH="/opt/homebrew/bin:$PATH"
+fi
+if [ -d "/usr/local/bin" ] && [[ ":$PATH:" != *":/usr/local/bin:"* ]]; then
+  export PATH="/usr/local/bin:$PATH"
+fi
+
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 TARGET_DIR="$HOME/Downloads/acf-images"
 DOWNLOAD_SCRIPT="$TARGET_DIR/download_images.sh"
@@ -55,8 +63,11 @@ fi
 print_status "Making sure Homebrew formulas are up to date..."
 brew update
 
+print_status "Ensuring ImageOptim CLI is installed for post-processing..."
+brew install imageoptim-cli
+
 # Required packages for the downloader
-REQUIRED_TOOLS=(wget imagemagick ffmpeg jq rg imageoptim-cli)
+REQUIRED_TOOLS=(wget imagemagick ffmpeg jq rg)
 for tool in "${REQUIRED_TOOLS[@]}"; do
   if brew list "$tool" >/dev/null 2>&1; then
     print_success "$tool already installed."

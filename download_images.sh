@@ -279,13 +279,20 @@ download_image() {
   local dir=$2
   local index=$3
   local label="$4"
-  local filename=$(basename "$url")
+  local filename_with_query=$(basename "$url")
+  local filename="${filename_with_query%%\?*}"
+  local query_string=""
+  if [[ "$filename_with_query" == *\?* ]]; then
+    query_string="?${filename_with_query#*\?}"
+  fi
+
   local normalized_filename=$(get_original_filename "$filename")
   local normalized_url="$url"
   local attempted_fullsize=false
 
   if [ "$normalized_filename" != "$filename" ]; then
-    normalized_url=$(echo "$url" | sed "s/$(basename \"$url\")\$/$normalized_filename/")
+    local base_path="${url%/*}"
+    normalized_url="${base_path}/${normalized_filename}${query_string}"
     attempted_fullsize=true
     debug "Attempting full-size version: $normalized_url"
   else
@@ -369,13 +376,20 @@ download_image_custom() {
   local prefix=$3
   local index=$4
   local label="$5"
-  local filename=$(basename "$url")
+  local filename_with_query=$(basename "$url")
+  local filename="${filename_with_query%%\?*}"
+  local query_string=""
+  if [[ "$filename_with_query" == *\?* ]]; then
+    query_string="?${filename_with_query#*\?}"
+  fi
+
   local normalized_filename=$(get_original_filename "$filename")
   local normalized_url="$url"
   local attempted_fullsize=false
 
   if [ "$normalized_filename" != "$filename" ]; then
-    normalized_url=$(echo "$url" | sed "s/$(basename \"$url\")\$/$normalized_filename/")
+    local base_path="${url%/*}"
+    normalized_url="${base_path}/${normalized_filename}${query_string}"
     attempted_fullsize=true
     debug "Attempting full-size version: $normalized_url"
   else
@@ -538,9 +552,8 @@ fi
 # Optimize images with ImageOptim CLI if available
 if command -v imageoptim > /dev/null 2>&1; then
   print ""
-  print "Optimizing images with ImageOptim..."
-  imageoptim --directory "$BASE_DIR" 2>/dev/null
-  if [ $? -eq 0 ]; then
+  print "Optimizing images with ImageOptim (entire output directory)..."
+  if imageoptim "$OUTPUT_BASE" 2>/dev/null; then
     print "  ✓ Image optimization complete"
   else
     print "  ⚠ ImageOptim encountered issues (images still downloaded successfully)"
